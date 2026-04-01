@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MediAssist — AI Medical Chatbot</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <a class="logo" href="#">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span class="logo-name">MediAssist</span>
+          <span class="logo-tagline">AI Health Assistant</span>
+        </div>
+      </a>
+    </div>
+
+    <button class="new-chat-btn" onclick="clearChat()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      New Conversation
+    </button>
+
+    <div class="sidebar-footer">
+      <div class="disclaimer-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <p class="disclaimer-text">For informational purposes only. Always consult a licensed physician.</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Chat -->
+  <main class="main">
+    <header class="chat-header">
+      <div class="chat-title-group">
+        <h1 class="chat-title">Medical Assistant</h1>
+        <p class="chat-subtitle">Powered by RAG — Medical Knowledge Base</p>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-green">
+          <span class="dot"></span>
+          Online
+        </span>
+        <span class="badge badge-blue">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Verified Sources
+        </span>
+      </div>
+    </header>
+
+    <div class="messages-wrap" id="messagesWrap">
+
+      <!-- Welcome state -->
+      <div class="welcome-state" id="welcomeState">
+        <div class="welcome-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <h2 class="welcome-title">How can I help you today?</h2>
+        <p class="welcome-sub">Ask me anything about symptoms, medications, treatments, or general health topics. I'll search the medical knowledge base for accurate answers.</p>
+        <div class="suggested-grid">
+          <button class="suggest-card" onclick="sendSuggestion(this)">
+            <div class="suggest-card-label">Symptoms</div>
+            <div class="suggest-card-text">What are the early signs of Type 2 diabetes?</div>
+          </button>
+          <button class="suggest-card" onclick="sendSuggestion(this)">
+            <div class="suggest-card-label">Medication</div>
+            <div class="suggest-card-text">What is the difference between ibuprofen and paracetamol?</div>
+          </button>
+          <button class="suggest-card" onclick="sendSuggestion(this)">
+            <div class="suggest-card-label">Treatment</div>
+            <div class="suggest-card-text">How is hypertension typically managed?</div>
+          </button>
+          <button class="suggest-card" onclick="sendSuggestion(this)">
+            <div class="suggest-card-label">Nutrition</div>
+            <div class="suggest-card-text">What foods help lower cholesterol naturally?</div>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div class="input-container">
+        <textarea
+          id="msgInput"
+          class="msg-input"
+          placeholder="Ask a medical question..."
+          rows="1"
+          maxlength="1000"
+        ></textarea>
+        <div class="input-actions">
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="input-footer">
+        <span class="input-hint">Press <kbd>Enter</kbd> to send &nbsp;·&nbsp; <kbd>Shift+Enter</kbd> for new line</span>
+        <span class="char-count" id="charCount">0 / 1000</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const input     = document.getElementById('msgInput');
+  const sendBtn   = document.getElementById('sendBtn');
+  const wrap      = document.getElementById('messagesWrap');
+  const welcome   = document.getElementById('welcomeState');
+  const charCount = document.getElementById('charCount');
+  let isLoading   = false;
+
+  // Auto-resize textarea
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+    charCount.textContent = input.value.length + ' / 1000';
+  });
+
+  // Enter to send
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  function sendSuggestion(card) {
+    const text = card.querySelector('.suggest-card-text').textContent;
+    input.value = text;
+    input.dispatchEvent(new Event('input'));
+    sendMessage();
+  }
+
+  function hideWelcome() {
+    if (welcome) welcome.style.display = 'none';
+  }
+
+  function addMessage(role, content) {
+    hideWelcome();
+    const isUser = role === 'user';
+
+    const row = document.createElement('div');
+    row.className = 'msg-row ' + (isUser ? 'user' : 'bot');
+
+    const avatarSvg = isUser
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;color:#6b8499"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`;
+
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const sourcesHtml = !isUser
+      ? `<div class="sources-tag">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+           Retrieved from medical knowledge base
+         </div>`
+      : '';
+
+    row.innerHTML = `
+      <div class="msg-avatar ${isUser ? 'user' : 'bot'}">${avatarSvg}</div>
+      <div class="msg-content">
+        <div class="msg-meta">
+          <span class="msg-name">${isUser ? 'You' : 'MediAssist'}</span>
+          <span>${now}</span>
+        </div>
+        <div class="bubble ${isUser ? 'user' : 'bot'}">
+          ${formatContent(content)}
+          ${sourcesHtml}
+        </div>
+      </div>
+    `;
+
+    wrap.appendChild(row);
+    scrollToBottom();
+    return row;
+  }
+
+  function formatContent(text) {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>')
+      .replace(/^/, '<p>')
+      .replace(/$/, '</p>');
+  }
+
+  function addTyping() {
+    hideWelcome();
+    const row = document.createElement('div');
+    row.className = 'msg-row bot';
+    row.id = 'typingRow';
+    row.innerHTML = `
+      <div class="msg-avatar bot">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      </div>
+      <div class="msg-content">
+        <div class="msg-meta"><span class="msg-name">MediAssist</span><span>typing…</span></div>
+        <div class="typing-bubble">
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+        </div>
+      </div>
+    `;
+    wrap.appendChild(row);
+    scrollToBottom();
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typingRow');
+    if (t) t.remove();
+  }
+
+  function showError(msg) {
+    const el = document.createElement('div');
+    el.className = 'error-msg';
+    el.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      ${msg}
+    `;
+    wrap.appendChild(el);
+    scrollToBottom();
+    setTimeout(() => el.remove(), 5000);
+  }
+
+  function scrollToBottom() {
+    setTimeout(() => { wrap.scrollTop = wrap.scrollHeight; }, 50);
+  }
+
+  async function sendMessage() {
+    const text = input.value.trim();
+    if (!text || isLoading) return;
+
+    isLoading = true;
+    sendBtn.disabled = true;
+    input.value = '';
+    input.style.height = 'auto';
+    charCount.textContent = '0 / 1000';
+
+    addMessage('user', text);
+    addTyping();
+
+    try {
+      const res = await fetch('/get', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ msg: text })
+      });
+
+      if (!res.ok) throw new Error('Server returned ' + res.status);
+      const data = await res.json();
+      removeTyping();
+      addMessage('bot', data.response || data.answer || data);
+
+    } catch (err) {
+      removeTyping();
+      showError('Unable to reach the server. Please try again.');
+      console.error(err);
+    } finally {
+      isLoading = false;
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  function clearChat() {
+    const rows = wrap.querySelectorAll('.msg-row, .error-msg');
+    rows.forEach(r => r.remove());
+    if (welcome) welcome.style.display = 'flex';
+  }
+
+  input.focus();
+</script>
+</body>
+</html>
