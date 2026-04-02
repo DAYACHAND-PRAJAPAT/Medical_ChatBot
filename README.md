@@ -127,4 +127,8 @@ open up localhost:
    - AWS_DEFAULT_REGION
    - ECR_REPO
    - PINECONE_API_KEY
+<<<<<<< HEAD
    - GROQ_API_KEY
+=======
+   - GROQ_API_KEY
+>>>>>>> 438ab724b3012886ff56d75f99aad5482d8d9217
